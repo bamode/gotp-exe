@@ -49,6 +49,18 @@ func main() {
 					return nil
 				},
 			},
+			{
+				Name:  "goto",
+				Usage: "go to a teleport point",
+				Action: func(cCtx *cli.Context) error {
+					name := cCtx.Args().First()
+					res, err := goTo(name)
+					check(err)
+					fmt.Println(res)
+					os.Exit(2)
+					return nil
+				},
+			},
 		},
 	}
 
@@ -170,6 +182,29 @@ func remove(name string) {
 	}
 
 	writeToFile(home, &newTpPoints)
+}
+
+func goTo(name string) (string, error) {
+	home, _ := os.UserHomeDir()
+	if !checkFileExists() {
+		log.Fatal("teleport is not currentl set up with a file")
+	}
+
+	// read the file
+	data, err := os.ReadFile(home + TPFILE)
+	check(err)
+	tpPoints := &[]TpPoint{}
+	err = json.Unmarshal(data, tpPoints)
+	check(err)
+
+	for _, tp := range *tpPoints {
+		if tp.Name == name {
+			return tp.Path, nil
+		}
+	}
+
+	log.Fatal("the point ", name, " does not exist!")
+	return "", errors.New("teleport point does not exist")
 }
 
 func writeToFile(home string, points *[]TpPoint) error {
