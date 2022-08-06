@@ -11,10 +11,16 @@ import (
 )
 
 func main() {
-	log.SetFlags(log.Llongfile)
+	log.SetFlags(log.Lshortfile)
 	app := &cli.App{
 		Name:  "teleport",
 		Usage: "Teleport around your file system!",
+		Authors: []*cli.Author{
+			{
+				Name:  "Brent Mode",
+				Email: "brent.a.mode@gmail.com",
+			},
+		},
 		Commands: []*cli.Command{
 			{
 				Name:  "add",
@@ -31,6 +37,15 @@ func main() {
 				Usage: "list all teleport points",
 				Action: func(cCtx *cli.Context) error {
 					list()
+					return nil
+				},
+			},
+			{
+				Name:  "remove",
+				Usage: "remove a teleport point",
+				Action: func(cCtx *cli.Context) error {
+					name := cCtx.Args().First()
+					remove(name)
 					return nil
 				},
 			},
@@ -131,8 +146,34 @@ func add(name string, p string) {
 	writeToFile(home, tpPoints)
 }
 
+func remove(name string) {
+	home, _ := os.UserHomeDir()
+	if !checkFileExists() {
+		log.Fatal("teleport is not currently set up with a file")
+	}
+
+	// read the file
+	data, err := os.ReadFile(home + TPFILE)
+	check(err)
+	tpPoints := &[]TpPoint{}
+	err = json.Unmarshal(data, tpPoints)
+	check(err)
+	log.Println("points:", tpPoints)
+
+	newTpPoints := []TpPoint{}
+	for _, tp := range *tpPoints {
+		if tp.Name != name {
+			newTpPoints = append(newTpPoints, tp)
+		} else {
+			log.Println("removed point:", tp)
+		}
+	}
+
+	writeToFile(home, &newTpPoints)
+}
+
 func writeToFile(home string, points *[]TpPoint) error {
-	f, err := os.OpenFile(home+TPFILE, os.O_WRONLY, os.ModeAppend)
+	f, err := os.Create(home + TPFILE)
 	if err != nil {
 		return err
 	}
@@ -142,6 +183,7 @@ func writeToFile(home string, points *[]TpPoint) error {
 		return err
 	}
 
+	log.Println("to be written:\n", string(jsonPoints))
 	_, err = f.Write(jsonPoints)
 	if err != nil {
 		return err
